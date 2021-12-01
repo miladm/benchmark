@@ -56,7 +56,6 @@ def run_one_step(func, nwarmup=WARMUP_ROUNDS, model_flops=None):
     # Warm-up `nwarmup` rounds
     for _i in range(nwarmup):
         func()
-
     if args.device == "cuda":
         torch.cuda.synchronize()
         start_event = torch.cuda.Event(enable_timing=True)
@@ -149,6 +148,8 @@ if __name__ == "__main__":
                         help="Profiling comma separated list of activities such as cpu,cuda.")
     parser.add_argument("--cudastreams", action="store_true",
                         help="Utilization test using increasing number of cuda streams.")
+    parser.add_argument("--no-warmup", action="store_true",
+                        help="Disable warmup rounds")
     parser.add_argument("--bs", type=int, help="Specify batch size to the test.")
     parser.add_argument("--flops", action="store_true", help="Return the flops result")
     args, extra_args = parser.parse_known_args()
