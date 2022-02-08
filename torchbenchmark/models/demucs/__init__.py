@@ -1,4 +1,5 @@
 import json
+from sqlalchemy import true
 import torch
 import random
 import numpy as np
@@ -61,8 +62,10 @@ class Model(BenchmarkModel):
             samples = 80000
             # TODO: enable GPU training after it is supported by infra
             #       see GH issue https://github.com/pytorch/benchmark/issues/652
-            # self.example_inputs = (torch.rand([train_bs, 5, 2, 426888], device=device),)
-            self.eval_example_inputs = (torch.rand([eval_bs, 5, 2, 426888], device=device),)
+            if test == "train":
+                self.example_inputs = (torch.rand([train_bs, 5, 2, 426888], device=device),)
+            elif test == "eval":
+                self.eval_example_inputs = (torch.rand([eval_bs, 5, 2, 426888], device=device),)
 
         self.duration = Fraction(samples + args.data_stride, args.samplerate)
         self.stride = Fraction(args.data_stride, args.samplerate)
@@ -78,20 +81,27 @@ class Model(BenchmarkModel):
         else:
             self.augment = Shift(args.data_stride)
 
-        self.model = DemucsWrapper(self.model, self.augment)
+        if test == "train":
+            self.model = DemucsWrapper(self.model, self.augment)
+            self.model.train()
+        elif test == "eval":
+            self.eval_model = DemucsWrapper(self.model, self.augment)
+            self.model.eval()
 
         if self.jit:
             if hasattr(torch.jit, '_script_pdt'):
-                self.model = torch.jit._script_pdt(self.model, example_inputs = [self.eval_example_inputs, ])
+                if test == "train":
+                    self.model = torch.jit._script_pdt(self.model, example_inputs = [self.example_inputs, ])
+                elif test == "eval":
+                    self.eval_model = torch.jit._script_pdt(self.model, example_inputs = [self.eval_example_inputs, ])
             else:
-                self.model = torch.jit.script(self.model, example_inputs = [self.eval_example_inputs, ])
-
-    def _set_mode(self, train):
-        self.model.train(train)
+                if test == "train":
+                    self.model = torch.jit.script(self.model, example_inputs = [self.example_inputs, ])
+                elif test == "eval":
+                    self.eval_model = torch.jit.script(self.model, example_inputs = [self.eval_example_inputs, ])
 
     def get_module(self) -> Tuple[DemucsWrapper, Tuple[Tensor]]:
-        self.model.eval()
-        return self.model, self.eval_example_inputs
+        return self.eval_model, self.eval_example_inputs
 
     def eval(self, niter=1):
         for _ in range(niter):
