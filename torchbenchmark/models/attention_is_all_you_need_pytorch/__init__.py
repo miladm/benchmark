@@ -107,7 +107,7 @@ class Model(BenchmarkModel):
             src_seq, trg_seq, gold = self.example_inputs[0]
             example_inputs_slice = (src_seq, trg_seq)
             self.optimizer = ScheduledOptim(
-                optim.Adam(self.module.parameters(), betas=(0.9, 0.98), eps=1e-09),
+                optim.Adam(self.model.parameters(), betas=(0.9, 0.98), eps=1e-09),
                 2.0, self.opt.d_model, self.opt.n_warmup_steps)
         elif test == "eval":
             self.eval_model = self._create_transformer()
@@ -135,13 +135,13 @@ class Model(BenchmarkModel):
             return self.eval_model, (*(src_seq, trg_seq), )
 
     def eval(self, niter=1):
-        self.module.eval()
-        for _, (src_seq, trg_seq, gold) in zip(range(niter), self.eval_data_loader):
+        self.eval_model.eval()
+        for _, (src_seq, trg_seq, gold) in zip(range(niter), self.eval_example_inputs):
             self.eval_model(*(src_seq, trg_seq))
 
     def train(self, niter=1):
-        self.module.train()
-        for _, (src_seq, trg_seq, gold) in zip(range(niter), self.train_data_loader):
+        self.model.train()
+        for _, (src_seq, trg_seq, gold) in zip(range(niter), self.example_inputs):
             self.optimizer.zero_grad()
             example_inputs = (src_seq, trg_seq)
             pred = self.model(*example_inputs)
