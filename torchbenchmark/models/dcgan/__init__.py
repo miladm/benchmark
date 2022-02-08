@@ -173,7 +173,7 @@ class Model(BenchmarkModel):
 
         # Handle multi-gpu if desired
         if (dcgan.device == 'cuda') and (ngpu > 1):
-            self.netG = nn.DataParallel(netG, list(range(ngpu)))
+            self.netG = nn.DataParallel(self.netG, list(range(ngpu)))
 
         # Apply the weights_init function to randomly initialize all weights
         #  to mean=0, stdev=0.2.
